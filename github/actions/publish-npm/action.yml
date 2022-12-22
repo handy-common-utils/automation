@@ -13,5 +13,6 @@ runs:
         node-version: ${{ inputs.node-version }}
     - name: Publish
       run: npm publish
+      shell: bash
       env:
         NODE_AUTH_TOKEN: ${{ secrets.NPM_PUBLISH_TOKEN }}
