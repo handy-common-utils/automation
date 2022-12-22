@@ -15,7 +15,12 @@ runs:
       with:
         node-version: ${{ inputs.node-version }}
     - name: Publish
-      run: npm publish
+      run: |
+        if [ ! -f .npmrc ]; then
+          echo "//registry.npmjs.org/:_authToken=${NPM_PUBLISH_TOKEN}" > .npmrc
+        fi
+        npm publish
       shell: bash
       env:
-        NODE_AUTH_TOKEN: ${{ inputs.npm-publish-token }}
+        NPM_PUBLISH_TOKEN: ${{ inputs.npm-publish-token }}
+        NPM_TOKEN: ${{ inputs.npm-publish-token }}
