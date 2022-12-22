@@ -1,9 +1,9 @@
 name: 'CI (node)'
 inputs:
-  node-version:  # "16.1" or "16.x" or "volta"
-    description: 'Version of Node.js, or "volta"'
+  node-version:  # "16.1" or "16.x" or "package.json"
+    description: 'Version of Node.js, or version file name such like "package.json"'
     required: false
-    default: 'volta'
+    default: 'package.json'
 runs:
   using: "composite"
   steps:

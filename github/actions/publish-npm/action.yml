@@ -1,9 +1,9 @@
 name: 'Publish to NPM registry'
 inputs:
-  node-version:  # "16.1" or "16.x" or "volta"
-    description: 'Version of Node.js, or "volta"'
+  node-version:  # "16.1" or "16.x" or "package.json"
+    description: 'Version of Node.js, or version file name such like "package.json"'
     required: false
-    default: 'volta'
+    default: 'package.json'
   npm-publish-token:
     description: 'Token for publishing to NPM registry'
     required: true
