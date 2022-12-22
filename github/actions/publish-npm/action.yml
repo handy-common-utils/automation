@@ -1,0 +1,17 @@
+name: 'Publish to NPM registry'
+inputs:
+  node-version:  # "16.1" or "16.x" or "volta"
+    description: 'Version of Node.js, or "volta"'
+    required: false
+    default: 'volta'
+runs:
+  using: "composite"
+  steps:
+    - name: Prepare
+      uses: handy-common-utils/actions/prepare-node@main
+      with:
+        node-version: ${{ inputs.node-version }}
+    - name: Publish
+      run: npm publish
+      env:
+        NODE_AUTH_TOKEN: ${{ secrets.NPM_PUBLISH_TOKEN }}

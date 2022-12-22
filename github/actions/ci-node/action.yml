@@ -1,0 +1,21 @@
+name: 'CI (node)'
+inputs:
+  node-version:  # "16.1" or "16.x" or "volta"
+    description: 'Version of Node.js, or "volta"'
+    required: false
+    default: 'volta'
+runs:
+  using: "composite"
+  steps:
+    - name: Prepare
+      uses: handy-common-utils/actions/prepare-node@main
+      with:
+        node-version: ${{ inputs.node-version }}
+    - name: Test
+      run: npm test
+    - name: Upload test coverage report
+      uses: codecov/codecov-action@v3
+      with:
+        directory: ./coverage
+        flags: unittests # optional
+        name: Result with Node version ${{ inputs.node-version }}

@@ -1,0 +1,22 @@
+name: 'Prepare (node)'
+inputs:
+  node-version:  # "16.1" or "16.x" or "volta"
+    description: 'Version of Node.js, or "volta"'
+    required: false
+    default: 'volta'
+runs:
+  using: "composite"
+  steps:
+    - name: Check out code
+      uses: actions/checkout@v3
+    - name: Use Node.js (${{ inputs.node-version }})
+      uses: actions/setup-node@v3
+      with:
+        node-version: ${{ (inputs.node-version != 'volta' && inputs.node-version != null && inputs.node-version) || null }}
+        node-version-file: ${{ ((inputs.node-version == 'volta' || inputs.node-version == null) && 'volta') || null  }}
+        cache: 'npm'
+        cache-dependency-path: |
+          package.json
+          package-lock.json
+    - name: Install dependencies
+      run: npm ci
