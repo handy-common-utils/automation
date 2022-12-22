@@ -4,6 +4,9 @@ inputs:
     description: 'Version of Node.js, or "volta"'
     required: false
     default: 'volta'
+  npm-publish-token:
+    description: 'Token for publishing to NPM registry'
+    required: true
 runs:
   using: "composite"
   steps:
@@ -15,4 +18,4 @@ runs:
       run: npm publish
       shell: bash
       env:
-        NODE_AUTH_TOKEN: ${{ secrets.NPM_PUBLISH_TOKEN }}
+        NODE_AUTH_TOKEN: ${{ inputs.npm-publish-token }}
