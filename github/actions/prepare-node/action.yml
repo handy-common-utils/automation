@@ -13,7 +13,7 @@ runs:
       uses: actions/setup-node@v3
       with:
         node-version: ${{ (!startsWith(inputs.node-version, '.') && !endsWith(inputs.node-version, '.json') && inputs.node-version) || null }}
-        node-version-file: ${{ ((startsWith(inputs.node-version, '.') || endsWith(inputs.node-version, '.json')) && inputs.node-version || null  }}
+        node-version-file: ${{ (((startsWith(inputs.node-version, '.') || endsWith(inputs.node-version, '.json')) && inputs.node-version) || null  }}
         cache: 'npm'
         cache-dependency-path: |
           package.json
