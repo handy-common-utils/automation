@@ -1,5 +1,5 @@
 name: 'Prepare (node)'
-description: 'Prepare Node.js environment for using "npm"'
+description: 'Prepare Node.js environment. It includes checking out code and running "npm ci". Caching of dependencies is covered too.'
 inputs:
   node-version:  # "16.1" or "16.x" or "package.json" or ".nvmrc"
     description: 'Version of Node.js, or version file name such like "package.json" or ".nvmrc"'
@@ -9,9 +9,9 @@ runs:
   using: "composite"
   steps:
     - name: Check out code
-      uses: actions/checkout@v3
+      uses: actions/checkout@v4
     - name: Use Node.js (${{ inputs.node-version }})
-      uses: actions/setup-node@v3
+      uses: actions/setup-node@v4
       with:
         node-version: ${{ (!startsWith(inputs.node-version, '.') && !endsWith(inputs.node-version, '.json') && inputs.node-version) || null }}
         node-version-file: ${{ ((startsWith(inputs.node-version, '.') || endsWith(inputs.node-version, '.json')) && inputs.node-version) || null }}
