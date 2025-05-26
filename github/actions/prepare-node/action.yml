@@ -1,7 +1,8 @@
 name: 'Prepare (node)'
+description: 'Prepare Node.js environment for using "npm"'
 inputs:
-  node-version:  # "16.1" or "16.x" or "package.json"
-    description: 'Version of Node.js, or version file name such like "package.json"'
+  node-version:  # "16.1" or "16.x" or "package.json" or ".nvmrc"
+    description: 'Version of Node.js, or version file name such like "package.json" or ".nvmrc"'
     required: false
     default: 'package.json'
 runs:
