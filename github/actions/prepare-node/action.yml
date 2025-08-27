@@ -5,11 +5,17 @@ inputs:
     description: 'Version of Node.js, or version file name such like "package.json" or ".nvmrc"'
     required: false
     default: 'package.json'
+  fetch-depth:  # Use "0" to fetch full history
+    description: 'Fetch depth for git history'
+    required: false
+    default: '1'
 runs:
   using: "composite"
   steps:
     - name: Check out code
       uses: actions/checkout@v4
+      with:
+        fetch-depth: ${{ inputs.fetch-depth }}
     - name: Use Node.js (${{ inputs.node-version }})
       uses: actions/setup-node@v4
       with:
