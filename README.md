@@ -39,7 +39,7 @@ When determining which Node.js version to set up, `prepare-node` (and by extensi
 
 | Input | Description | Required | Default |
 |---|---|---|---|
-| `node-version` | Version of Node.js (e.g. `"20.x"`, `"22.x"`), or version file name (`".nvmrc"`, `"package.json"`). If omitted, automatically detects `.nvmrc`, `.node-version`, or `package.json`. | No | `""` (auto-detect) |
+| `node-version` | Version of Node.js (e.g. `"20.x"`, `"22.x"`), or version file name (`".nvmrc"`, `"package.json"`). If omitted, automatically detects `.nvmrc`, `.node-version`, or `package.json` with `engines.node` or `volta.node`. | No | `""` (auto-detect) |
 | `fetch-depth` | Fetch depth for git history (`"0"` to fetch full history and tags). | No | `"1"` |
 | `cache` | Package manager for dependency caching (`"npm"`, `"yarn"`, `"pnpm"`). Set to empty string `""` to disable. | No | `"npm"` |
 | `cache-dependency-path` | Path to dependency lockfile(s) for cache key generation. | No | `package.json`<br>`package-lock.json` |
@@ -55,22 +55,50 @@ When determining which Node.js version to set up, `prepare-node` (and by extensi
 
 #### Example Usage
 
+**Basic usage (auto-detects Node version and caches dependencies):**
+
 ```yaml
 steps:
   - name: Prepare environment
     uses: handy-common-utils/automation/github/actions/prepare-node@main
 ```
 
-Or specifying options explicitly:
+**With explicit Node version:**
 
 ```yaml
 steps:
-  - name: Prepare environment with full history
+  - name: Prepare environment
     uses: handy-common-utils/automation/github/actions/prepare-node@main
     with:
-      node-version: .nvmrc
+      node-version: "22.x"
       fetch-depth: 0
 ```
+
+**Automated Release with semantic-release**
+
+Using `prepare-node` for environment setup in a release workflow:
+
+```yaml
+jobs:
+  release-if-should:
+    if: ${{ github.event.workflow_run.conclusion == 'success' }}
+    runs-on: ubuntu-latest
+    steps:
+      - uses: handy-common-utils/automation/github/actions/prepare-node@main
+        with:
+          fetch-depth: 0
+      - run: npx semantic-release
+        env:
+          NPM_TOKEN: ${{ secrets.NPM_PUBLISH_TOKEN }}
+          GH_TOKEN: ${{ secrets.GORELEASER_PAT }}
+```
+
+**What `prepare-node` does in this scenario:**
+- Auto-detects `.nvmrc` without manual configuration
+- Fetches full commit history (`fetch-depth: 0`) so semantic-release can examine tags and commits
+- Caches npm dependencies for faster installs
+- Installs dependencies via `npm ci`
+- Eliminates three separate steps (checkout, setup-node, npm ci) from traditional workflows
 
 ---
 
@@ -196,3 +224,79 @@ jobs:
           npm-publish-token: ${{ secrets.NPM_PUBLISH_TOKEN }}
           publish-flags: '--provenance'
 ```
+
+**Automated Release with semantic-release**
+
+Using `prepare-node` for environment setup in a release workflow:
+
+```yaml
+jobs:
+  release-if-should:
+    if: ${{ github.event.workflow_run.conclusion == 'success' }}
+    runs-on: ubuntu-latest
+    steps:
+      - uses: handy-common-utils/automation/github/actions/prepare-node@main
+        with:
+          fetch-depth: 0
+      - run: npx semantic-release
+        env:
+          NPM_TOKEN: ${{ secrets.NPM_PUBLISH_TOKEN }}
+          GH_TOKEN: ${{ secrets.GORELEASER_PAT }}
+```
+
+**What `prepare-node` does in this scenario:**
+- Auto-detects `.nvmrc` automatically (no manual configuration needed)
+- Fetches full commit history (`fetch-depth: 0`) so `semantic-release` can examine tags and commits
+- Caches dependencies and installs them automatically
+- `semantic-release` manages its own NPM registry and git authentication via its plugins
+
+**Monorepo Release with zx-bulk-release**
+
+Using `prepare-node` for multiple package releases:
+
+```yaml
+jobs:
+  release-if-should:
+    if: ${{ github.event.workflow_run.conclusion == 'success' }}
+    runs-on: ubuntu-latest
+    steps:
+      - uses: handy-common-utils/automation/github/actions/prepare-node@main
+        with:
+          fetch-depth: 0
+      - run: npx zx-bulk-release
+        env:
+          NPM_REGISTRY: 'https://registry.npmjs.org'
+          NPM_TOKEN: ${{ secrets.NPM_PUBLISH_TOKEN }}
+```
+
+**What `prepare-node` does in this scenario:**
+- Auto-detects `.nvmrc` automatically
+- Fetches full commit history so `zx-bulk-release` can access tags and commits
+- Caches dependencies and installs them automatically
+- Eliminates redundant `npm ci` steps from traditional multi-step workflows
+
+**Direct npm Publish with publish-npm**
+
+Using `publish-npm` to handle `.npmrc` authentication:
+
+```yaml
+jobs:
+  release-if-should:
+    if: ${{ github.event.workflow_run.conclusion == 'success' }}
+    runs-on: ubuntu-latest
+    steps:
+      - uses: handy-common-utils/automation/github/actions/publish-npm@main
+        with:
+          fetch-depth: 0
+          npm-publish-token: ${{ secrets.NPM_PUBLISH_TOKEN }}
+          publish-command: 'npx zx-bulk-release'
+        env:
+          NPM_REGISTRY: 'https://registry.npmjs.org'
+```
+
+**What `publish-npm` does in this scenario:**
+- Handles complete environment setup: checkout, Node setup, dependency caching, and `.npmrc` configuration
+- Automatically appends `_authToken` to `.npmrc` if it already exists without one
+- Exports `NPM_TOKEN`, `NODE_AUTH_TOKEN`, and `NPM_PUBLISH_TOKEN` for full ecosystem compatibility
+- Fetches full commit history for release tools that need tag/commit access
+- Simplifies authentication management — no manual `.npmrc` setup needed
