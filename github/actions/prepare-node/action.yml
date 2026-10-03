@@ -1,30 +1,87 @@
 name: 'Prepare (node)'
-description: 'Prepare Node.js environment. It includes checking out code and running "npm ci". Caching of dependencies is covered too.'
+description: 'Prepare Node.js environment. It includes checking out code, setting up Node.js with dependency caching, and running "npm ci".'
 inputs:
-  node-version:  # "16.1" or "16.x" or "package.json" or ".nvmrc"
-    description: 'Version of Node.js, or version file name such like "package.json" or ".nvmrc"'
+  node-version:  # "20.x" or "22.x" or "24.x" or ".nvmrc" or "package.json"
+    description: 'Version of Node.js (e.g. "20.x", "22.x", "24.x"), or version file name such like ".nvmrc" or "package.json". If omitted, automatically detects .nvmrc, .node-version, or package.json.'
     required: false
-    default: 'package.json'
+    default: ''
   fetch-depth:  # Use "0" to fetch full history
     description: 'Fetch depth for git history'
     required: false
     default: '1'
+  cache:
+    description: 'Package manager for caching dependencies (e.g. "npm", "yarn", "pnpm"). Set to empty string to disable caching.'
+    required: false
+    default: 'npm'
+  cache-dependency-path:
+    description: 'Path to dependency lockfile(s) for cache key generation'
+    required: false
+    default: |
+      package.json
+      package-lock.json
+  install-dependencies:
+    description: 'Whether to install dependencies'
+    required: false
+    default: 'true'
+  install-command:
+    description: 'Command to install dependencies'
+    required: false
+    default: 'npm ci'
+outputs:
+  node-version:
+    description: 'The installed Node.js version'
+    value: ${{ steps.setup-node.outputs.node-version }}
+  cache-hit:
+    description: 'A boolean value indicating if dependency cache was hit'
+    value: ${{ steps.setup-node.outputs.cache-hit }}
 runs:
   using: "composite"
   steps:
     - name: Check out code
-      uses: actions/checkout@v6
+      uses: actions/checkout@v7
       with:
         fetch-depth: ${{ inputs.fetch-depth }}
-    - name: Use Node.js (${{ inputs.node-version }})
-      uses: actions/setup-node@v6
+
+    - name: Resolve Node.js version
+      id: resolve-node
+      shell: bash
+      run: |
+        input_version="${{ inputs.node-version }}"
+        if [ -n "$input_version" ] && [ "$input_version" != "auto" ]; then
+          if [[ "$input_version" == .* ]] || [[ "$input_version" == *.json ]] || [[ "$input_version" == *.toml ]]; then
+            echo "node-version=" >> "$GITHUB_OUTPUT"
+            echo "node-version-file=$input_version" >> "$GITHUB_OUTPUT"
+          else
+            echo "node-version=$input_version" >> "$GITHUB_OUTPUT"
+            echo "node-version-file=" >> "$GITHUB_OUTPUT"
+          fi
+        else
+          # Auto-detection: prefer .nvmrc, then .node-version, then package.json (if engines.node defined), else fallback to lts/*
+          if [ -f ".nvmrc" ]; then
+            echo "node-version=" >> "$GITHUB_OUTPUT"
+            echo "node-version-file=.nvmrc" >> "$GITHUB_OUTPUT"
+          elif [ -f ".node-version" ]; then
+            echo "node-version=" >> "$GITHUB_OUTPUT"
+            echo "node-version-file=.node-version" >> "$GITHUB_OUTPUT"
+          elif [ -f "package.json" ] && grep -qE "\"node\"[[:space:]]*:" package.json; then
+            echo "node-version=" >> "$GITHUB_OUTPUT"
+            echo "node-version-file=package.json" >> "$GITHUB_OUTPUT"
+          else
+            echo "node-version=lts/*" >> "$GITHUB_OUTPUT"
+            echo "node-version-file=" >> "$GITHUB_OUTPUT"
+          fi
+        fi
+
+    - name: Use Node.js
+      id: setup-node
+      uses: actions/setup-node@v7
       with:
-        node-version: ${{ (!startsWith(inputs.node-version, '.') && !endsWith(inputs.node-version, '.json') && inputs.node-version) || null }}
-        node-version-file: ${{ ((startsWith(inputs.node-version, '.') || endsWith(inputs.node-version, '.json')) && inputs.node-version) || null }}
-        cache: 'npm'
-        cache-dependency-path: |
-          package.json
-          package-lock.json
+        node-version: ${{ steps.resolve-node.outputs.node-version }}
+        node-version-file: ${{ steps.resolve-node.outputs.node-version-file }}
+        cache: ${{ inputs.cache || null }}
+        cache-dependency-path: ${{ inputs.cache-dependency-path || null }}
+
     - name: Install dependencies
-      run: npm ci
+      if: ${{ inputs.install-dependencies != 'false' }}
+      run: ${{ inputs.install-command }}
       shell: bash

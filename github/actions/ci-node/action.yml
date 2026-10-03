@@ -1,23 +1,75 @@
 name: 'CI (node)'
-description: 'Run tests using "npm test" and upload coverage report'
+description: 'Run tests using "npm test" and upload coverage report to Codecov'
 inputs:
-  node-version:  # "16.1" or "16.x" or "package.json" or ".nvmrc"
-    description: 'Version of Node.js, or version file name such like "package.json" or ".nvmrc"'
+  node-version:  # "20.x" or "22.x" or "24.x" or ".nvmrc" or "package.json"
+    description: 'Version of Node.js (e.g. "20.x", "22.x", "24.x"), or version file name such like ".nvmrc" or "package.json". If omitted, automatically detects .nvmrc, .node-version, or package.json.'
     required: false
-    default: 'package.json'
+    default: ''
+  fetch-depth:
+    description: 'Fetch depth for git history'
+    required: false
+    default: '1'
+  cache:
+    description: 'Package manager for caching dependencies (e.g. "npm", "yarn", "pnpm"). Set to empty string to disable caching.'
+    required: false
+    default: 'npm'
+  cache-dependency-path:
+    description: 'Path to dependency lockfile(s) for cache key generation'
+    required: false
+    default: |
+      package.json
+      package-lock.json
+  install-command:
+    description: 'Command to install dependencies'
+    required: false
+    default: 'npm ci'
+  test-command:
+    description: 'Command to run tests'
+    required: false
+    default: 'npm test'
+  upload-coverage:
+    description: 'Whether to upload test coverage report to Codecov'
+    required: false
+    default: 'true'
+  codecov-token:
+    description: 'Token for uploading to Codecov (defaults to CODECOV_TOKEN env var)'
+    required: false
+    default: ''
+  codecov-flags:
+    description: 'Flags for Codecov upload'
+    required: false
+    default: 'unittests'
+  codecov-dir:
+    description: 'Directory containing coverage reports'
+    required: false
+    default: './coverage'
+  fail-ci-if-error:
+    description: 'Whether to fail CI if Codecov upload fails'
+    required: false
+    default: 'false'
 runs:
   using: "composite"
   steps:
     - name: Prepare
+      id: prepare
       uses: handy-common-utils/automation/github/actions/prepare-node@main
       with:
         node-version: ${{ inputs.node-version }}
+        fetch-depth: ${{ inputs.fetch-depth }}
+        cache: ${{ inputs.cache }}
+        cache-dependency-path: ${{ inputs.cache-dependency-path }}
+        install-command: ${{ inputs.install-command }}
+
     - name: Test
-      run: npm test
+      run: ${{ inputs.test-command }}
       shell: bash
+
     - name: Upload test coverage report
-      uses: codecov/codecov-action@v6
+      if: ${{ inputs.upload-coverage != 'false' }}
+      uses: codecov/codecov-action@v7
       with:
-        directory: ./coverage
-        flags: unittests # optional
-        name: Result with Node version ${{ inputs.node-version }}
+        token: ${{ inputs.codecov-token || env.CODECOV_TOKEN }}
+        directory: ${{ inputs.codecov-dir }}
+        flags: ${{ inputs.codecov-flags }}
+        name: Result with Node version ${{ steps.prepare.outputs.node-version || inputs.node-version || 'auto' }}
+        fail_ci_if_error: ${{ inputs.fail-ci-if-error }}
