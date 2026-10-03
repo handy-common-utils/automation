@@ -12,6 +12,10 @@ inputs:
   npm-publish-token:
     description: 'Token for publishing to NPM registry'
     required: true
+  registry-url:
+    description: 'Target NPM registry URL. If omitted, automatically checks package.json publishConfig.registry, npm config get registry, or defaults to https://registry.npmjs.org/'
+    required: false
+    default: ''
   publish-command:
     description: 'Command to publish package'
     required: false
@@ -31,11 +35,30 @@ runs:
 
     - name: Publish
       run: |
-        if [ ! -f .npmrc ]; then
-          echo "//registry.npmjs.org/:_authToken=${NPM_PUBLISH_TOKEN}" > .npmrc
-        elif ! grep -q "_authToken" .npmrc; then
-          echo "//registry.npmjs.org/:_authToken=${NPM_PUBLISH_TOKEN}" >> .npmrc
+        target_reg="${{ inputs.registry-url }}"
+        if [ -z "$target_reg" ]; then
+          if [ -f "package.json" ]; then
+            target_reg=$(jq -r '.publishConfig.registry // empty' package.json 2>/dev/null)
+          fi
+          if [ -z "$target_reg" ]; then
+            npm_reg=$(npm config get registry 2>/dev/null)
+            if [ -n "$npm_reg" ] && [ "$npm_reg" != "undefined" ]; then
+              target_reg="$npm_reg"
+            else
+              target_reg="https://registry.npmjs.org/"
+            fi
+          fi
         fi
+
+        clean_reg=$(echo "$target_reg" | sed -E 's|^https?://?||' | sed -E 's|/+$||')
+        auth_line="//$clean_reg/:_authToken=${NPM_PUBLISH_TOKEN}"
+
+        if [ ! -f .npmrc ]; then
+          echo "$auth_line" > .npmrc
+        elif ! grep -qF "//$clean_reg/:_authToken" .npmrc; then
+          echo "$auth_line" >> .npmrc
+        fi
+
         if [ -n "${{ inputs.publish-flags }}" ]; then
           ${{ inputs.publish-command }} ${{ inputs.publish-flags }}
         else

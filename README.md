@@ -150,6 +150,7 @@ Publishes package to the NPM registry.
 | Input | Description | Required | Default |
 |---|---|---|---|
 | `npm-publish-token` | Token for publishing to the NPM registry. | **Yes** | — |
+| `registry-url` | Target NPM registry URL (auto-detects `publishConfig.registry`, npm config, or defaults to `https://registry.npmjs.org/`). | No | `""` (auto-detect) |
 | `node-version` | Version of Node.js or version file name. Auto-detects if omitted. | No | `""` (auto-detect) |
 | `fetch-depth` | Fetch depth for git history. | No | `"1"` |
 | `publish-command` | Command used to publish package. | No | `"npm publish"` |
