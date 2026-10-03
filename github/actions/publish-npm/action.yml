@@ -38,7 +38,7 @@ runs:
         target_reg="${{ inputs.registry-url }}"
         if [ -z "$target_reg" ]; then
           if [ -f "package.json" ]; then
-            target_reg=$(jq -r '.publishConfig.registry // empty' package.json 2>/dev/null)
+            target_reg=$(node -p "require('./package.json').publishConfig?.registry || ''" 2>/dev/null || echo "")
           fi
           if [ -z "$target_reg" ]; then
             npm_reg=$(npm config get registry 2>/dev/null)
