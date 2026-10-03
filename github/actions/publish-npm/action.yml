@@ -1,13 +1,29 @@
 name: 'Publish to NPM registry'
-description: 'Publish to NPM registry'
+description: 'Publish package to NPM registry'
 inputs:
-  node-version:  # "16.1" or "16.x" or "package.json" or ".nvmrc"
-    description: 'Version of Node.js, or version file name such like "package.json" or ".nvmrc"'
+  node-version:  # "20.x" or "22.x" or "24.x" or ".nvmrc" or "package.json"
+    description: 'Version of Node.js (e.g. "20.x", "22.x", "24.x"), or version file name such like ".nvmrc" or "package.json". If omitted, automatically detects .nvmrc, .node-version, or package.json.'
     required: false
-    default: 'package.json'
+    default: ''
+  fetch-depth:
+    description: 'Fetch depth for git history'
+    required: false
+    default: '1'
   npm-publish-token:
     description: 'Token for publishing to NPM registry'
     required: true
+  registry-url:
+    description: 'Target NPM registry URL. If omitted, automatically checks package.json publishConfig.registry, npm config get registry, or defaults to https://registry.npmjs.org/'
+    required: false
+    default: ''
+  publish-command:
+    description: 'Command to publish package'
+    required: false
+    default: 'npm publish'
+  publish-flags:
+    description: 'Additional flags for publish command (e.g. --access public, --provenance, --tag next)'
+    required: false
+    default: ''
 runs:
   using: "composite"
   steps:
@@ -15,13 +31,41 @@ runs:
       uses: handy-common-utils/automation/github/actions/prepare-node@main
       with:
         node-version: ${{ inputs.node-version }}
+        fetch-depth: ${{ inputs.fetch-depth }}
+
     - name: Publish
       run: |
-        if [ ! -f .npmrc ]; then
-          echo "//registry.npmjs.org/:_authToken=${NPM_PUBLISH_TOKEN}" > .npmrc
+        target_reg="${{ inputs.registry-url }}"
+        if [ -z "$target_reg" ]; then
+          if [ -f "package.json" ]; then
+            target_reg=$(node -p "require('./package.json').publishConfig?.registry || ''" 2>/dev/null || echo "")
+          fi
+          if [ -z "$target_reg" ]; then
+            npm_reg=$(npm config get registry 2>/dev/null)
+            if [ -n "$npm_reg" ] && [ "$npm_reg" != "undefined" ]; then
+              target_reg="$npm_reg"
+            else
+              target_reg="https://registry.npmjs.org/"
+            fi
+          fi
         fi
-        npm publish
+
+        clean_reg=$(echo "$target_reg" | sed -E 's|^https?://?||' | sed -E 's|/+$||')
+        auth_line="//$clean_reg/:_authToken=${NPM_PUBLISH_TOKEN}"
+
+        if [ ! -f .npmrc ]; then
+          echo "$auth_line" > .npmrc
+        elif ! grep -qF "//$clean_reg/:_authToken" .npmrc; then
+          echo "$auth_line" >> .npmrc
+        fi
+
+        if [ -n "${{ inputs.publish-flags }}" ]; then
+          ${{ inputs.publish-command }} ${{ inputs.publish-flags }}
+        else
+          ${{ inputs.publish-command }}
+        fi
       shell: bash
       env:
+        NODE_AUTH_TOKEN: ${{ inputs.npm-publish-token }}
         NPM_PUBLISH_TOKEN: ${{ inputs.npm-publish-token }}
         NPM_TOKEN: ${{ inputs.npm-publish-token }}
