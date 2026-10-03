@@ -63,7 +63,7 @@ runs:
           elif [ -f ".node-version" ]; then
             echo "node-version=" >> "$GITHUB_OUTPUT"
             echo "node-version-file=.node-version" >> "$GITHUB_OUTPUT"
-          elif [ -f "package.json" ] && grep -qE "\"node\"[[:space:]]*:" package.json; then
+          elif [ -f "package.json" ] && jq -e '.engines.node // .volta.node' package.json >/dev/null 2>&1; then
             echo "node-version=" >> "$GITHUB_OUTPUT"
             echo "node-version-file=package.json" >> "$GITHUB_OUTPUT"
           else
