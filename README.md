@@ -16,9 +16,24 @@ Prepares the Node.js development and CI environment.
 
 #### Features
 - Checks out code using `actions/checkout@v7`.
-- Automatically detects Node.js version from `.nvmrc`, `.node-version`, or `package.json` (if `node-version` input is omitted), or accepts an explicit version spec (e.g. `20.x`, `22.x`, `24.x`).
+- Automatically detects Node.js version using a well-defined fallback hierarchy (or accepts an explicit version spec or file name).
 - Configures npm dependency caching using `actions/setup-node@v7`.
 - Installs dependencies using `npm ci` (customizable or skippable).
+
+#### Node.js Version Resolution Order
+
+When determining which Node.js version to set up, `prepare-node` (and by extension `ci-node` and `publish-npm`) follows this exact order:
+
+1. **Explicit Version Input**:
+   - If `node-version` is provided (and not `"auto"`):
+     - If it looks like a version file name (starts with `.` such as `.nvmrc` or `.node-version`, or ends with `.json` or `.toml` such as `package.json`), it is passed to `setup-node` as `node-version-file`.
+     - Otherwise (e.g. `"20.x"`, `"22.x"`, `"24.x"`, `"lts/*"`), it is passed to `setup-node` as `node-version`.
+
+2. **Auto-Detection** (when `node-version` is omitted, empty `""`, or `"auto"`):
+   - **Step 1 — `.nvmrc`**: Checks for `.nvmrc` at the repository root. If present, uses `node-version-file: .nvmrc`.
+   - **Step 2 — `.node-version`**: Checks for `.node-version` at the repository root. If present, uses `node-version-file: .node-version`.
+   - **Step 3 — `package.json` (`engines.node` or `volta.node`)**: Checks if `package.json` exists and defines `engines.node` or `volta.node`. If defined, uses `node-version-file: package.json`.
+   - **Step 4 — Fallback (`lts/*`)**: If none of the above files or configurations are present, falls back to `node-version: lts/*`.
 
 #### Inputs
 
