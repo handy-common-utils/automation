@@ -55,7 +55,7 @@ When determining which Node.js version to set up, `prepare-node` (and by extensi
 
 #### Example Usage
 
-**Basic usage (auto-detects Node version and caches dependencies):**
+**Auto-detects Node version and caches dependencies:**
 
 ```yaml
 steps:
@@ -74,11 +74,17 @@ steps:
       fetch-depth: 0
 ```
 
-**Automated Release with semantic-release**
-
-Using `prepare-node` for environment setup in a release workflow:
+**Support automated release with semantic-release**
 
 ```yaml
+name: Release if needed
+on:
+  workflow_run:
+    workflows: ['CI']
+    branches: [main, master]
+    types:
+      - completed
+
 jobs:
   release-if-should:
     if: ${{ github.event.workflow_run.conclusion == 'success' }}
@@ -93,11 +99,42 @@ jobs:
           GH_TOKEN: ${{ secrets.GORELEASER_PAT }}
 ```
 
-**What `prepare-node` does in this scenario:**
-- Auto-detects `.nvmrc` without manual configuration
+What `prepare-node` does in this workflow:
+- Auto-detects Node.js version without manual configuration
 - Fetches full commit history (`fetch-depth: 0`) so semantic-release can examine tags and commits
 - Caches npm dependencies for faster installs
 - Installs dependencies via `npm ci`
+- Eliminates three separate steps (checkout, setup-node, npm ci) from traditional workflows
+
+**Support monorepo release with zx-bulk-release**
+
+```yaml
+name: Release if needed
+on:
+  workflow_run:
+    workflows: ['CI']
+    branches: [main, master]
+    types:
+      - completed
+
+jobs:
+  release-if-should:
+    if: ${{ github.event.workflow_run.conclusion == 'success' }}
+    runs-on: ubuntu-latest
+    steps:
+      - uses: handy-common-utils/automation/github/actions/prepare-node@main
+        with:
+          fetch-depth: 0
+      - run: npx zx-bulk-release
+        env:
+          NPM_REGISTRY: 'https://registry.npmjs.org'
+          NPM_TOKEN: ${{ secrets.NPM_PUBLISH_TOKEN }}
+```
+
+What `prepare-node` does in this workflow:
+- Auto-detects Node.js version automatically
+- Fetches full commit history so `zx-bulk-release` can access tags and commits
+- Caches dependencies and installs them automatically
 - Eliminates three separate steps (checkout, setup-node, npm ci) from traditional workflows
 
 ---
@@ -132,7 +169,7 @@ Runs continuous integration tests and uploads coverage reports to Codecov.
 
 #### Example Usage
 
-**Standard Matrix CI Workflow (`.github/workflows/ci.yml`):**
+**Standard matrix CI workflow:**
 
 ```yaml
 name: CI
@@ -157,7 +194,7 @@ jobs:
           codecov-token: ${{ secrets.CODECOV_TOKEN }}
 ```
 
-**Single-Version CI (Auto-Detecting `.nvmrc`):**
+**Single-version CI:**
 
 ```yaml
 name: CI
@@ -201,7 +238,7 @@ Publishes package to the NPM registry.
 
 #### Example Usage
 
-**Publish on Version Tag Push (`.github/workflows/publish.yml`):**
+**Publish on version tag push:**
 
 ```yaml
 name: Publish
@@ -225,61 +262,55 @@ jobs:
           publish-flags: '--provenance'
 ```
 
-**Automated Release with semantic-release**
+What `publish-npm` does in this workflow:
+- Prepare the environment (checkout with full history, detect Node.js version, cache npm, and install dependencies).
+- Configure `.npmrc` with the registry authentication token.
+- Export `NPM_TOKEN`, `NODE_AUTH_TOKEN`, and `NPM_PUBLISH_TOKEN`.
+- Execute `npm publish` with `--provenance` flag.
 
-Using `prepare-node` for environment setup in a release workflow:
+**Publish when needed with semantic-release**
 
 ```yaml
+name: Release if needed
+on:
+  workflow_run:
+    workflows: ['CI']
+    branches: [main, master]
+    types:
+      - completed
+
 jobs:
   release-if-should:
     if: ${{ github.event.workflow_run.conclusion == 'success' }}
     runs-on: ubuntu-latest
     steps:
-      - uses: handy-common-utils/automation/github/actions/prepare-node@main
+      - uses: handy-common-utils/automation/github/actions/publish-npm@main
         with:
           fetch-depth: 0
-      - run: npx semantic-release
+          npm-publish-token: ${{ secrets.NPM_PUBLISH_TOKEN }}
+          publish-command: 'npx semantic-release'
         env:
-          NPM_TOKEN: ${{ secrets.NPM_PUBLISH_TOKEN }}
           GH_TOKEN: ${{ secrets.GORELEASER_PAT }}
 ```
 
-**What `prepare-node` does in this scenario:**
-- Auto-detects `.nvmrc` automatically (no manual configuration needed)
-- Fetches full commit history (`fetch-depth: 0`) so `semantic-release` can examine tags and commits
-- Caches dependencies and installs them automatically
-- `semantic-release` manages its own NPM registry and git authentication via its plugins
+What `publish-npm` does in this workflow:
+- Prepare the environment (checkout with full history, detect Node.js version, cache npm, and install dependencies).
+- Configure `.npmrc` with the registry authentication token.
+- Export `NPM_TOKEN`, `NODE_AUTH_TOKEN`, and `NPM_PUBLISH_TOKEN`.
+- Execute `npx semantic-release`.
 
-**Monorepo Release with zx-bulk-release**
 
-Using `prepare-node` for multiple package releases:
-
-```yaml
-jobs:
-  release-if-should:
-    if: ${{ github.event.workflow_run.conclusion == 'success' }}
-    runs-on: ubuntu-latest
-    steps:
-      - uses: handy-common-utils/automation/github/actions/prepare-node@main
-        with:
-          fetch-depth: 0
-      - run: npx zx-bulk-release
-        env:
-          NPM_REGISTRY: 'https://registry.npmjs.org'
-          NPM_TOKEN: ${{ secrets.NPM_PUBLISH_TOKEN }}
-```
-
-**What `prepare-node` does in this scenario:**
-- Auto-detects `.nvmrc` automatically
-- Fetches full commit history so `zx-bulk-release` can access tags and commits
-- Caches dependencies and installs them automatically
-- Eliminates redundant `npm ci` steps from traditional multi-step workflows
-
-**Direct npm Publish with publish-npm**
-
-Using `publish-npm` to handle `.npmrc` authentication:
+**Publish when needed from monorepo with zx-bulk-release**
 
 ```yaml
+name: Release if needed
+on:
+  workflow_run:
+    workflows: ['CI']
+    branches: [main, master]
+    types:
+      - completed
+
 jobs:
   release-if-should:
     if: ${{ github.event.workflow_run.conclusion == 'success' }}
@@ -294,9 +325,8 @@ jobs:
           NPM_REGISTRY: 'https://registry.npmjs.org'
 ```
 
-**What `publish-npm` does in this scenario:**
-- Handles complete environment setup: checkout, Node setup, dependency caching, and `.npmrc` configuration
-- Automatically appends `_authToken` to `.npmrc` if it already exists without one
-- Exports `NPM_TOKEN`, `NODE_AUTH_TOKEN`, and `NPM_PUBLISH_TOKEN` for full ecosystem compatibility
-- Fetches full commit history for release tools that need tag/commit access
-- Simplifies authentication management — no manual `.npmrc` setup needed
+What `publish-npm` does in this workflow:
+- Prepare the environment (checkout with full history, detect Node.js version, cache npm, and install dependencies).
+- Configure `.npmrc` with the registry authentication token.
+- Export `NPM_TOKEN`, `NODE_AUTH_TOKEN`, and `NPM_PUBLISH_TOKEN`.
+- Execute `npx semantic-release`.
