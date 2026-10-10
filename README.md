@@ -336,47 +336,102 @@ What `publish-npm` does in this workflow:
 
 ## Shell Configurations (`shell/`)
 
-Reusable Zsh and direnv configurations providing automatic environment switching, dynamic command prompt badges, and native Miniforge/Conda support across development machines.
+Reusable Zsh, Bash, and direnv configurations providing automatic environment switching, dynamic command prompt badges, native Miniforge/Conda support, and automatic direnv shell hooking across development machines.
 
 ### Features
 
 - **Smart `.nvmrc` Auto-Switching**: Automatically detects `.nvmrc` files and switches the Node.js version when navigating directories. Reverts to default Node.js version when leaving a project directory.
 - **Consistent Messaging**: Emits clean status updates matching direnv format (`nvm: loading ~/path/.nvmrc` / `nvm: unloading`), with zero duplicate logs when navigating subfolders.
 - **Dynamic Prompt Badges**: Displays the active Miniforge/Conda environment (green) and active Node.js version (cyan) in your terminal prompt with zero performance overhead.
+- **Built-in Direnv Hook**: Automatically initializes the direnv shell hook for your shell if direnv is installed — no extra hook line needed in your personal profile.
 - **Miniforge Conda Integration for direnv**: Provides a clean `layout_miniforge` helper for `.envrc` files.
+- **Multi-Shell Support**: Identical behavior and prompt formatting across both **Zsh** and **Bash**.
 
 ### Repository Files
 
-- [`shell/.zshrc`](shell/.zshrc): Self-contained Zsh script providing NVM loading, `.nvmrc` auto-switching, and dynamic prompt badges.
+- [`shell/.zshrc`](shell/.zshrc): Self-contained Zsh script providing NVM loading, `.nvmrc` auto-switching, dynamic prompt badges, and automatic direnv hook.
+- [`shell/.bashrc`](shell/.bashrc): Self-contained Bash script providing equivalent functionality for Bash using `PROMPT_COMMAND` and automatic direnv hook.
 - [`shell/.config/direnv/direnvrc`](shell/.config/direnv/direnvrc): Direnv extension providing the `layout_miniforge` helper.
+
+---
+
+### Prerequisites & Installation
+
+These shell scripts leverage [nvm](https://github.com/nvm-sh/nvm) for Node.js management, [direnv](https://direnv.net/) for per-directory environment variables, and [Miniforge](https://github.com/conda-forge/miniforge) for Conda Python environments:
+
+#### 1. Install `nvm` (Node Version Manager)
+If not already installed:
+```bash
+curl -o- https://raw.githubusercontent.com/nvm-sh/nvm/v0.40.1/install.sh | bash
+```
+
+#### 2. Install `direnv`
+[`direnv`](https://direnv.net/) is an extension for your shell that automatically loads and unloads environment variables depending on your current directory.
+
+- **macOS (Homebrew)**:
+  ```bash
+  brew install direnv
+  ```
+- **Ubuntu / Debian**:
+  ```bash
+  sudo apt install direnv
+  ```
+- **Fedora / RHEL**:
+  ```bash
+  sudo dnf install direnv
+  ```
+
+*(Note: The direnv shell hook is automatically executed when you source `shell/.zshrc` or `shell/.bashrc`, so you do not need to add a manual `eval "$(direnv hook ...)"` line).*
+
+#### 3. Install `Miniforge` (Python & Conda Environment Manager)
+[Miniforge](https://github.com/conda-forge/miniforge) is a lightweight, community-driven Conda distribution pre-configured to use the `conda-forge` channel:
+
+- **macOS (Homebrew)**:
+  ```bash
+  brew install miniforge
+  ```
+- **macOS / Linux (Official Installer Script)**:
+  ```bash
+  curl -L -O "https://github.com/conda-forge/miniforge/releases/latest/download/Miniforge3-$(uname)-$(uname -m).sh"
+  bash Miniforge3-$(uname)-$(uname -m).sh
+  ```
+
+---
 
 ### Setup on a Local Machine
 
 After cloning this repository (for example into `~/code/automation`):
 
-#### 1. In your `~/.zshrc`
-Add the following line to source the reusable shell configuration:
-
+#### For Zsh Users:
+Add to `~/.zshrc`:
 ```zsh
 # Source reusable shell configuration from automation repository
 [ -f "$HOME/code/automation/shell/.zshrc" ] && source "$HOME/code/automation/shell/.zshrc"
 ```
 
-#### 2. In your `~/.config/direnv/direnvrc`
-Add the following line to load the Miniforge activator for direnv:
+#### For Bash Users:
+Add to `~/.bashrc`:
+```bash
+# Source reusable shell configuration from automation repository
+[ -f "$HOME/code/automation/shell/.bashrc" ] && source "$HOME/code/automation/shell/.bashrc"
+```
 
+*(On macOS, ensure `~/.bash_profile` sources `~/.bashrc` if using Bash as your login shell).*
+
+#### For Direnv Users (`~/.config/direnv/direnvrc`):
+Create or edit `~/.config/direnv/direnvrc` (create the directory with `mkdir -p ~/.config/direnv` if it doesn't exist):
 ```bash
 # Source reusable direnv configuration from automation repository
 [ -f "$HOME/code/automation/shell/.config/direnv/direnvrc" ] && source "$HOME/code/automation/shell/.config/direnv/direnvrc"
 ```
 
-*(Alternatively, you can symlink `shell/.config/direnv/direnvrc` or copy the file into `~/.config/direnv/lib/miniforge.sh` which direnv loads automatically).*
+*(Alternatively, you can copy or symlink the file into `~/.config/direnv/lib/automation.sh` which direnv loads automatically).*
 
 ---
 
-### Example Project `.envrc`
+### Example Project Usage
 
-#### For projects using Miniforge / Conda Python environments:
+#### Projects Using Miniforge / Conda Python Environments
 Create a `.envrc` in the project root:
 
 ```bash
@@ -387,7 +442,10 @@ layout_miniforge my-project-env
 # export API_URL="http://localhost:3000"
 ```
 
-Run `direnv allow` once inside the project directory.
+Authorize the file once by running:
+```bash
+direnv allow
+```
 
-#### For pure Node.js projects:
-**No `.envrc` is required!** Simply place a standard `.nvmrc` file in the project root containing your required Node.js version (e.g. `20`, `22`, or `24`). The Zsh auto-switcher will automatically detect and switch to that version upon entering the directory.
+#### Pure Node.js Projects
+**No `.envrc` is required!** Simply place a standard `.nvmrc` file in the project root containing your required Node.js version (e.g. `20`, `22`, or `24`). The shell auto-switcher will automatically detect and switch to that version upon entering the directory.
