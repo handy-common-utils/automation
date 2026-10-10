@@ -1,0 +1,19 @@
+# ==============================================================================
+# Lightweight Native Miniforge / Conda Activator for direnv
+# ==============================================================================
+layout_miniforge() {
+  local env_name="$1"
+  [[ -z "$env_name" ]] && return 0
+
+  local miniforge_base="${MINIFORGE_ROOT:-$HOME/miniforge3}"
+  local env_path="$miniforge_base/envs/$env_name"
+
+  if [[ -d "$env_path" ]]; then
+    # Use PATH_add to cleanly inject the child env path above everything else
+    PATH_add "$env_path/bin"
+    export CONDA_PREFIX="$env_path"
+    export CONDA_DEFAULT_ENV="$env_name"
+  else
+    echo "direnv warning: Miniforge environment '$env_name' not found at $env_path" >&2
+  fi
+}

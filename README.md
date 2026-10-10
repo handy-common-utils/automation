@@ -1,6 +1,6 @@
 # automation
 
-Reusable GitHub Actions supporting build, test, and deployment automation for CI/CD pipelines in Node.js / TypeScript projects.
+Reusable GitHub Actions and development shell configurations supporting build, test, and deployment automation for CI/CD pipelines as well as local shell environment management.
 
 ## GitHub Actions
 
@@ -330,3 +330,64 @@ What `publish-npm` does in this workflow:
 - Configure `.npmrc` with the registry authentication token.
 - Export `NPM_TOKEN`, `NODE_AUTH_TOKEN`, and `NPM_PUBLISH_TOKEN`.
 - Execute `npx semantic-release`.
+
+
+---
+
+## Shell Configurations (`shell/`)
+
+Reusable Zsh and direnv configurations providing automatic environment switching, dynamic command prompt badges, and native Miniforge/Conda support across development machines.
+
+### Features
+
+- **Smart `.nvmrc` Auto-Switching**: Automatically detects `.nvmrc` files and switches the Node.js version when navigating directories. Reverts to default Node.js version when leaving a project directory.
+- **Consistent Messaging**: Emits clean status updates matching direnv format (`nvm: loading ~/path/.nvmrc` / `nvm: unloading`), with zero duplicate logs when navigating subfolders.
+- **Dynamic Prompt Badges**: Displays the active Miniforge/Conda environment (green) and active Node.js version (cyan) in your terminal prompt with zero performance overhead.
+- **Miniforge Conda Integration for direnv**: Provides a clean `layout_miniforge` helper for `.envrc` files.
+
+### Repository Files
+
+- [`shell/.zshrc`](shell/.zshrc): Self-contained Zsh script providing NVM loading, `.nvmrc` auto-switching, and dynamic prompt badges.
+- [`shell/.config/direnv/direnvrc`](shell/.config/direnv/direnvrc): Direnv extension providing the `layout_miniforge` helper.
+
+### Setup on a Local Machine
+
+After cloning this repository (for example into `~/code/automation`):
+
+#### 1. In your `~/.zshrc`
+Add the following line to source the reusable shell configuration:
+
+```zsh
+# Source reusable shell configuration from automation repository
+[ -f "$HOME/code/automation/shell/.zshrc" ] && source "$HOME/code/automation/shell/.zshrc"
+```
+
+#### 2. In your `~/.config/direnv/direnvrc`
+Add the following line to load the Miniforge activator for direnv:
+
+```bash
+# Source reusable direnv configuration from automation repository
+[ -f "$HOME/code/automation/shell/.config/direnv/direnvrc" ] && source "$HOME/code/automation/shell/.config/direnv/direnvrc"
+```
+
+*(Alternatively, you can symlink `shell/.config/direnv/direnvrc` or copy the file into `~/.config/direnv/lib/miniforge.sh` which direnv loads automatically).*
+
+---
+
+### Example Project `.envrc`
+
+#### For projects using Miniforge / Conda Python environments:
+Create a `.envrc` in the project root:
+
+```bash
+# Specify your Miniforge environment name
+layout_miniforge my-project-env
+
+# Declare any project-specific environment variables
+# export API_URL="http://localhost:3000"
+```
+
+Run `direnv allow` once inside the project directory.
+
+#### For pure Node.js projects:
+**No `.envrc` is required!** Simply place a standard `.nvmrc` file in the project root containing your required Node.js version (e.g. `20`, `22`, or `24`). The Zsh auto-switcher will automatically detect and switch to that version upon entering the directory.
