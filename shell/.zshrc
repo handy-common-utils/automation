@@ -32,52 +32,14 @@ autoload -Uz add-zsh-hook
 add-zsh-hook precmd set_development_prompt
 
 # ==============================================================================
-# NVM Loader & Smart .nvmrc Auto-Switcher
+# Common Shell Configurations
 # ==============================================================================
-export NVM_DIR="${NVM_DIR:-$HOME/.nvm}"
-[ -s "$NVM_DIR/nvm.sh" ] && \. "$NVM_DIR/nvm.sh"
-
-# Automatically switch Node.js version based on .nvmrc
-load-nvmrc() {
-    local nvmrc_path="$(nvm_find_nvmrc 2>/dev/null)"
-
-    if [[ -n "$nvmrc_path" ]]; then
-        if [[ "$CURRENT_NVMRC_PATH" != "$nvmrc_path" ]]; then
-            CURRENT_NVMRC_PATH="$nvmrc_path"
-            echo "nvm: loading ${nvmrc_path/#$HOME/~}"
-        fi
-
-        local nvmrc_node_version
-        nvmrc_node_version=$(nvm version "$(cat "${nvmrc_path}")" 2>/dev/null)
-
-        if [[ "$nvmrc_node_version" = "N/A" ]]; then
-            nvm install
-            NVMRC_VERSION="$(nvm version)"
-        elif [[ "$nvmrc_node_version" != "$(nvm version)" ]]; then
-            nvm use --silent
-            NVMRC_VERSION="$(nvm version)"
-        else
-            NVMRC_VERSION="$(nvm version)"
-        fi
-    elif [[ -n "$CURRENT_NVMRC_PATH" ]]; then
-        echo "nvm: unloading"
-        CURRENT_NVMRC_PATH=""
-        if [[ "$(nvm version)" != "$(nvm version default)" ]]; then
-            nvm use default --silent
-        fi
-        NVMRC_VERSION=""
-    elif [[ -z "$nvmrc_path" ]]; then
-        NVMRC_VERSION=""
-        CURRENT_NVMRC_PATH=""
-    fi
-}
+_shell_dir="$(cd -- "$(dirname -- "${(%):-%N}")" >/dev/null 2>&1 && pwd)"
+if [[ -f "$_shell_dir/commonrc.sh" ]]; then
+    source "$_shell_dir/commonrc.sh";
+fi
 
 add-zsh-hook chpwd load-nvmrc
 load-nvmrc
 
-# ==============================================================================
-# Direnv Shell Hook
-# ==============================================================================
-if command -v direnv >/dev/null 2>&1; then
-    eval "$(direnv hook zsh)"
-fi
+
